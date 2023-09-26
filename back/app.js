@@ -157,6 +157,7 @@ app.get('/agreements', async (req, res) => {
       buyer.balance -= submissionPrice;
       supplier.balance += submissionPrice;
       submission.paymentDate = new Date();
+      submission.paid = 1;
       await buyer.save();
       await supplier.save();
       await submission.save();
@@ -167,6 +168,8 @@ app.get('/agreements', async (req, res) => {
       return res.status(500).json({ error: 'Ocurrió un error al procesar el pago.' });
     }
   });
+
+  //5. **_POST_** `/balances/deposit/:accountId` - Implement the API to allow buyers to deposit money into their balance. A buyer can't deposit more than 10% of their total submissions to pay at the moment of deposit.
   
   
 module.exports = app;

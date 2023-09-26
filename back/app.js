@@ -2,6 +2,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const { Op } = require('sequelize');
 
 const { Sequelize } = require('sequelize');
 const sequelize = new Sequelize('sqlite::memory:')
@@ -71,4 +72,27 @@ app.get('/agreements/:id', async (req, res) => {
 
 //2. **_GET_** `/agreements` - Return a list of agreements belonging to the user (buyer or supplier) where the agreements are not terminated.
 
+app.get('/agreements', async (req, res) => {
+    try {
+      const accountId = req.query.accountId;  
+  
+      const agreements = await Agreement.findAll({
+        where: {
+          [Op.or]: [
+            { BuyerId: accountId },
+            { SupplierId: accountId }
+          ],
+          status: {
+            [Op.ne]: 'terminated'
+          }
+        }
+      });
+  
+      return res.json(agreements);
+    } catch (error) {
+      console.error('Error al obtener la lista de acuerdos:', error);
+      return res.status(500).json({ error: 'Ocurrió un error al obtener la lista de acuerdos.' });
+    }
+  });
+  
 module.exports = app;

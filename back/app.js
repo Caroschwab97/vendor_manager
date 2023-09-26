@@ -12,6 +12,7 @@ const  {Agreement}  = require('./models/aggreement');  // Importa el modelo Agre
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+const { Submission } = require('./models/submissions');
 
 var app = express();
 
@@ -94,5 +95,40 @@ app.get('/agreements', async (req, res) => {
       return res.status(500).json({ error: 'Ocurrió un error al obtener la lista de acuerdos.' });
     }
   });
+  
+  //3. **_GET_** `/submissions/unpaid` - Get all unpaid submissions for a user (either a buyer or supplier) but only for active agreements.
+
+  app.get('/submissions/unpaid', async (req, res) => {
+    try {
+      const accountId = req.query.accountId;
+  
+      const unpaidSubmissions = await Submission.findAll({
+        include: [
+          {
+            model: Agreement,
+            where: {
+              [Op.or]: [
+                { BuyerId: accountId },
+                { SupplierId: accountId }
+              ],
+              status: {
+                [Op.eq]: 'in_progress'
+              }
+            },
+          }
+        ],
+        where: {
+          paid: 0
+        }
+      });
+  
+      return res.json(unpaidSubmissions);
+    } catch (error) {
+      console.error('Error al obtener las presentaciones no pagadas:', error);
+      return res.status(500).json({ error: 'Ocurrió un error al obtener las presentaciones no pagadas.' });
+    }
+  });
+  
+  
   
 module.exports = app;

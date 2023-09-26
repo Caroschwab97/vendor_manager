@@ -170,6 +170,46 @@ app.get('/agreements', async (req, res) => {
   });
 
   //5. **_POST_** `/balances/deposit/:accountId` - Implement the API to allow buyers to deposit money into their balance. A buyer can't deposit more than 10% of their total submissions to pay at the moment of deposit.
+  app.post('/balances/deposit/:accountId', async (req, res) => {
+    const accountId = req.params.accountId;
+    const depositAmount = parseFloat(req.body.amount);
   
+    try {
+      const totalAgreements = await Agreement.findAll({
+        where: {
+          BuyerId: accountId
+        }
+      });
+      const agreementIds = totalAgreements.map(agreement => agreement.id);
+      const totalSubmissionsToPay = await Submission.sum('price', {
+        where: {
+          agreementId: agreementIds,
+          paid: false
+        }
+      });
+  
+      const maxDepositAmount = totalSubmissionsToPay * 0.10;
+  
+      if (depositAmount > maxDepositAmount) {
+        return res.status(400).json({ error: 'El monto supera el 10%' });
+      }
+  
+      const account = await Account.findByPk(accountId);
+  
+      if (!account) {
+        return res.status(404).json({ error: 'Cuenta de comprador no encontrada.' });
+      }
+  
+      account.balance += depositAmount;
+      account.updatedAt = new Date();
+  
+      await account.save();
+  
+      return res.json({ message: `Depósito exitoso. Nuevo saldo: ${account.balance}` });
+    } catch (error) {
+      console.error('Error al procesar el depósito:', error);
+      return res.status(500).json({ error: 'Ocurrió un error al procesar el depósito.' });
+    }
+  });
   
 module.exports = app;

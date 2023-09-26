@@ -124,11 +124,49 @@ app.get('/agreements', async (req, res) => {
   
       return res.json(unpaidSubmissions);
     } catch (error) {
-      console.error('Error al obtener las presentaciones no pagadas:', error);
-      return res.status(500).json({ error: 'Ocurrió un error al obtener las presentaciones no pagadas.' });
+      console.error('Error al obtener las prestaciones no pagadas:', error);
+      return res.status(500).json({ error: 'Ocurrió un error al obtener las prestaciones no pagadas.' });
     }
   });
   
+  //4. **_POST_** `/submissions/:submission_id/pay` - Implement this API to allow buyers to pay for a submission. A buyer can only pay if their balance is greater than or equal to the amount to pay. The amount should be moved from the buyer's balance to the supplier's balance.
+  app.post('/submissions/:submission_id/pay', async (req, res) => {
+    try {
+      const submissionId = req.params.submission_id;
+      const { buyerId } = req.body; 
+
+      const submission = await Submission.findByPk(submissionId, {
+        include: Agreement,
+      });
+
+      if (submission.Agreement.BuyerId !== buyerId) {
+        return res.status(400).json({ error: 'La prestacion no pertenece al comprador. ' + submission.Agreement.BuyerId + " " + buyerId});
+      }
+      if (!submission) {
+        return res.status(400).json({ error: 'La prestacion no existe ' });
+      }
+  
+      const buyer = await Account.findByPk(buyerId);
+      const supplier = await Account.findByPk(submission.Agreement.SupplierId);
+
+      const submissionPrice = submission.price;
+      if (buyer.balance < submissionPrice) {
+        return res.status(400).json({ error: 'El comprador no tiene suficiente saldo para pagar.' });
+      }
+
+      buyer.balance -= submissionPrice;
+      supplier.balance += submissionPrice;
+      submission.paymentDate = new Date();
+      await buyer.save();
+      await supplier.save();
+      await submission.save();
+  
+      return res.json({ message: 'Pago exitoso. Saldo actualizado.' });
+    } catch (error) {
+      console.error('Error al procesar el pago:', error);
+      return res.status(500).json({ error: 'Ocurrió un error al procesar el pago.' });
+    }
+  });
   
   
 module.exports = app;
